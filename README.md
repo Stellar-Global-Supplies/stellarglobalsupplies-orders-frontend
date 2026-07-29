@@ -11,7 +11,7 @@ A modern, mobile-responsive web application for managing customer orders with re
 - **Delay Orders**: Reschedule delivery dates during processing phase
 - **Invoice Upload**: Attach invoices when marking orders as delivered
 - **WhatsApp Integration**: Send order updates directly to customers via WhatsApp
-- **Email Notifications**: Automated Gmail API-based email notifications at each status change
+- **Email Notifications**: Automated email notifications at each status change
 
 ### Customer Features
 - **Public Order Tracking**: Customers can track their orders using a unique URL without authentication
@@ -34,10 +34,9 @@ A modern, mobile-responsive web application for managing customer orders with re
 
 ### Technical Features
 - **Authentication**: Supabase Auth with Google OAuth
-- **Serverless Backend**: AWS Lambda + API Gateway
-- **Cloud Infrastructure**: S3 + CloudFront for static hosting
+- **Serverless Backend**: AWS Lambda + API Gateway (deployed separately)
 - **Database**: Supabase (PostgreSQL) with Row Level Security
-- **CI/CD**: GitHub Actions for automated deployment
+- **Deployment**: Vercel (frontend)
 
 ## Tech Stack
 
@@ -49,18 +48,16 @@ A modern, mobile-responsive web application for managing customer orders with re
 - Date-fns (date formatting)
 - Custom CSS with CSS Variables for theming
 
-### Backend
+### Backend (deployed separately)
 - AWS Lambda (Node.js 20)
 - AWS API Gateway (HTTP API)
 - Supabase (PostgreSQL + Auth)
 - Gmail API (OAuth2 for emails)
 
 ### Infrastructure
-- Terraform (Infrastructure as Code)
-- AWS S3 (static hosting)
-- AWS CloudFront (CDN)
-- AWS Route53 (DNS)
-- AWS CloudWatch (logging)
+- Vercel (frontend hosting)
+- AWS S3 (invoice storage)
+- Supabase (database + auth)
 
 ## Project Structure
 
@@ -95,31 +92,14 @@ stellarglobalsupplies-orders/
 │   │   ├── App.jsx             # Main app with routing
 │   │   └── index.js            # Entry point
 │   └── package.json
-│
-├── lambda/
-│   ├── create-order/
-│   │   ├── index.js            # POST /orders - Create order + send email
-│   │   └── emailTemplates.js   # HTML email templates
-│   ├── update-order-status/
-│   │   └── index.js            # PATCH /orders/{id}/status - Update status
-│   ├── send-notification/
-│   │   └── index.js            # POST /orders/{id}/notify - Resend email
-│   └── get-order-by-token/
-│       └── index.js            # GET /track/{token} - Public order lookup
-│
-├── supabase/
-│   └── migrations/
-│       ├── 001_create_orders.sql # Database schema
-│       ├── 002_add_tracking_token.sql # Add tracking token column
-│       └── 003_add_invoice_url.sql # Add invoice URL column
-│       └── 004_add_invoice_timestamp.sql # Add invoice timestamp
-│
-├── terraform/
-│   └── main.tf                 # AWS infrastructure definition
-│
-└── .github/
-    └── workflows/
-        └── deploy.yml          # CI/CD pipeline
+├── ai_context/
+│   ├── overview.md
+│   ├── tech-stack.md
+│   ├── features.md
+│   ├── engineering.md
+│   └── ui.md
+├── VERCEL_DEPLOY.md
+└── README.md
 ```
 
 ## Getting Started
@@ -127,11 +107,8 @@ stellarglobalsupplies-orders/
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Terraform 1.5+
-- AWS CLI configured
 - Supabase account
-- Google Cloud account (for Gmail API)
-- GitHub repository with secrets configured
+- Backend API deployed (Lambda + API Gateway)
 
 ### Environment Variables
 
@@ -141,14 +118,6 @@ REACT_APP_SUPABASE_URL=your_supabase_url
 REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
 REACT_APP_API_BASE_URL=https://your-api-gateway-url.amazonaws.com
 REACT_APP_WHATSAPP_NUMBER=919637655556
-```
-
-#### Backend (AWS SSM Parameter Store)
-```bash
-# Gmail OAuth credentials (stored in SSM)
-/stellar-oms/gmail/client-id
-/stellar-oms/gmail/client-secret
-/stellar-oms/gmail/refresh-token
 ```
 
 ### Local Development
@@ -165,34 +134,13 @@ cd frontend
 npm install
 ```
 
-3. **Install Lambda dependencies**
-```bash
-cd lambda
-npm install
-```
-
-4. **Set up Supabase**
+3. **Set up Supabase**
    - Create a new Supabase project
-   - Run the SQL migrations in `supabase/migrations/`
-   - Create the `top_skus` and `material_split` views
+   - Run the SQL migrations (stored in backend repo)
    - Enable Google OAuth in Supabase Auth settings
    - Copy your Supabase URL and anon key
 
-5. **Set up Gmail API**
-   - Create OAuth2 credentials in Google Cloud Console
-   - Enable Gmail API
-   - Get refresh token using OAuth2 playground
-   - Store credentials in AWS SSM Parameter Store
-
-6. **Deploy infrastructure**
-```bash
-cd terraform
-terraform init
-terraform plan
-terraform apply
-```
-
-7. **Start frontend development server**
+4. **Start frontend development server**
 ```bash
 cd frontend
 npm start
@@ -200,55 +148,13 @@ npm start
 
 ## Deployment
 
-### Automated Deployment (GitHub Actions)
+The frontend is deployed to **Vercel**. See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for detailed instructions.
 
-The project uses GitHub Actions for CI/CD. Push to `main` branch triggers:
+Every `git push` to `main` triggers an automatic redeploy on Vercel.
 
-1. **Frontend Deployment**
-   - Build React app
-   - Upload to S3 bucket
-   - Invalidate CloudFront cache
+## API Endpoints
 
-2. **Backend Deployment**
-   - Package Lambda functions
-   - Deploy via Terraform
-   - Update Lambda environment variables
-
-### Manual Deployment
-
-#### Frontend
-```bash
-cd frontend
-npm run build
-aws s3 sync build/ s3://stellar-oms-frontend-production
-aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
-```
-
-#### Backend
-```bash
-cd terraform
-terraform apply
-```
-
-## Configuration
-
-### Supabase Views
-
-Create these views in Supabase SQL Editor:
-
-```sql
--- Product types view
-CREATE VIEW top_skus AS
-SELECT DISTINCT sku FROM orders ORDER BY sku;
-
--- Materials view
-CREATE VIEW material_split AS
-SELECT DISTINCT material_type FROM orders ORDER BY material_type;
-```
-
-### API Gateway Routes
-
-The application uses these endpoints:
+The application communicates with a backend API (deployed separately) using these endpoints:
 
 - `POST /orders` - Create new order
 - `PATCH /orders/{id}/status` - Update order status
@@ -304,9 +210,7 @@ Payment reminders are automatically included in:
 - Row Level Security (RLS) on Supabase
 - JWT-based authentication
 - CORS configured on API Gateway
-- Service role key for Lambda (bypasses RLS)
 - OAuth2 for Gmail API
-- Sensitive data stored in AWS SSM Parameter Store
 
 ## License
 

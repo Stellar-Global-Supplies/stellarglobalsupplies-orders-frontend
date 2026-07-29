@@ -1,5 +1,7 @@
 # Vercel Deployment Guide
-## Stellar Global Supplies — Frontend (React)
+## Stellar Global Supplies — Order Management System (React Frontend)
+
+> **Note:** This is the primary deployment method. The frontend is deployed to Vercel, while the backend (Lambda + API Gateway) is managed separately.
 
 ---
 
