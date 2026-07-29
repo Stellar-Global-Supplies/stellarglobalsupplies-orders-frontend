@@ -12,6 +12,7 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import TrackOrderPage from './pages/TrackOrderPage';
 import './styles/globals.css';
 import { setUser, clearUser, recordNavigation } from './tracing';
+import { supabaseConfigError } from './utils/supabase';
 
 // Records page navigations as OTLP spans so NR shows which pages users visit
 function RouteTracker() {
@@ -62,7 +63,67 @@ function AppLayout() {
   );
 }
 
+// Shows a friendly config error screen instead of a white-screen crash
+// when required environment variables are missing.
+function ConfigErrorScreen({ message }) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      padding: '2rem',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      background: '#0F172A',
+      color: '#F8FAFB',
+    }}>
+      <div style={{
+        maxWidth: 520,
+        textAlign: 'center',
+        background: '#1E293B',
+        borderRadius: 12,
+        padding: '2.5rem 2rem',
+        boxShadow: '0 8px 32px rgba(0,0,0,.3)',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>⚙️</div>
+        <h1 style={{ fontSize: 22, margin: '0 0 12px', fontWeight: 700 }}>
+          Configuration Error
+        </h1>
+        <p style={{ fontSize: 14.5, lineHeight: 1.6, color: '#94A3B8', margin: '0 0 20px' }}>
+          {message}
+        </p>
+        <div style={{
+          background: '#0D1F2D',
+          borderRadius: 8,
+          padding: '1rem 1.25rem',
+          textAlign: 'left',
+          fontSize: 13,
+          color: '#64748B',
+          fontFamily: 'monospace',
+        }}>
+          <p style={{ margin: '0 0 8px', color: '#94A3B8', fontWeight: 600 }}>Required environment variables:</p>
+          <p style={{ margin: '4px 0' }}>• REACT_APP_SUPABASE_URL</p>
+          <p style={{ margin: '4px 0' }}>• REACT_APP_SUPABASE_ANON_KEY</p>
+          <p style={{ margin: '4px 0' }}>• REACT_APP_API_BASE_URL</p>
+          <p style={{ margin: '4px 0' }}>• REACT_APP_WHATSAPP_NUMBER</p>
+        </div>
+        <p style={{ fontSize: 12.5, color: '#64748B', marginTop: 20, marginBottom: 0 }}>
+          Add these in your Cloudflare Pages dashboard under <strong>Settings → Environment variables</strong>,
+          then trigger a new deployment.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  // If required env vars are missing, show a config error screen
+  // instead of crashing with a white screen.
+  if (supabaseConfigError) {
+    return <ConfigErrorScreen message={supabaseConfigError} />;
+  }
+
   return (
     <ThemeProvider>
       <AuthProvider>
