@@ -1,0 +1,16 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfplan
+terraform/.lambda_zips/
+
+# Node
+node_modules/
+frontend/node_modules/
+lambda/node_modules/
+lambda/update-order-items/node_modules/
+# Build artifacts
+frontend/build/
+lambda/*.zip
+
+# OS
+.DS_Store

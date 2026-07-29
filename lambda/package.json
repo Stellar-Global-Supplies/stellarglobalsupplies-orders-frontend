@@ -1,0 +1,30 @@
+{
+  "name": "stellar-oms-lambda",
+  "version": "1.0.0",
+  "description": "Stellar Global Supplies OMS Lambda functions",
+  "private": true,
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/core": "^1.27.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.54.0",
+    "@opentelemetry/resources": "^1.27.0",
+    "@opentelemetry/sdk-trace-base": "^1.27.0",
+    "@opentelemetry/sdk-trace-node": "^1.27.0",
+    "@opentelemetry/semantic-conventions": "^1.27.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "googleapis": "^140.0.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "aws-sdk": "^2.1600.0"
+  },
+  "scripts": {
+    "build:create-order": "esbuild create-order/index.js --bundle --platform=node --target=node20 --outfile=dist/create-order/index.js --external:aws-sdk --minify",
+    "build:update-order-status": "esbuild update-order-status/index.js --bundle --platform=node --target=node20 --outfile=dist/update-order-status/index.js --external:aws-sdk --minify",
+    "build:update-order-items": "esbuild update-order-items/index.js --bundle --platform=node --target=node20 --outfile=dist/update-order-items/index.js --external:aws-sdk --minify",
+    "build:send-notification": "esbuild send-notification/index.js --bundle --platform=node --target=node20 --outfile=dist/send-notification/index.js --external:aws-sdk --minify",
+    "build:get-order-by-token": "esbuild get-order-by-token/index.js --bundle --platform=node --target=node20 --outfile=dist/get-order-by-token/index.js --external:aws-sdk --minify",
+    "build": "npm run build:create-order && npm run build:update-order-status && npm run build:update-order-items && npm run build:send-notification && npm run build:get-order-by-token"
+  }
+}

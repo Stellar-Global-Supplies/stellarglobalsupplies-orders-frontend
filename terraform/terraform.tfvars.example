@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────
+# terraform.tfvars  —  COPY this file, rename, fill in values
+# NEVER commit the real terraform.tfvars to git
+# ─────────────────────────────────────────────────────────────
+
+aws_region  = "ap-south-1"
+root_domain = "stellarglobalsupplies.com"
+domain_name = "orders.stellarglobalsupplies.com"
+environment = "production"
+
+# If you already have an ACM cert for orders.stellarglobalsupplies.com
+# in us-east-1, paste its ARN here and Terraform will skip cert creation.
+# Leave empty ("") to let Terraform create & validate a new cert.
+existing_acm_cert_arn = "arn:aws:acm:us-east-1:YOUR_ACCOUNT_ID:certificate/YOUR_CERT_ID"
+
+# Supabase — set via GitHub Secrets in CI; use env vars locally:
+#   export TF_VAR_supabase_url="https://xxxx.supabase.co"
+#   export TF_VAR_supabase_service_key="eyJ..."
+supabase_url         = ""
+supabase_service_key = ""
+
+# Gmail API — OAuth2 credentials for sending order emails
+# See DEPLOY.md "Gmail Setup" section for how to get these
+#   export TF_VAR_gmail_client_id="xxxx.apps.googleusercontent.com"
+#   export TF_VAR_gmail_client_secret="GOCSPX-xxxx"
+#   export TF_VAR_gmail_refresh_token="1//xxxx"
+gmail_client_id     = ""
+gmail_client_secret = ""
+gmail_refresh_token = ""
+gmail_sender        = "orders@stellarglobalsupplies.com"
