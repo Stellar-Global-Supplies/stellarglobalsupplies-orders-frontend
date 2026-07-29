@@ -36,7 +36,7 @@ A modern, mobile-responsive web application for managing customer orders with re
 - **Authentication**: Supabase Auth with Google OAuth
 - **Serverless Backend**: AWS Lambda + API Gateway (deployed separately)
 - **Database**: Supabase (PostgreSQL) with Row Level Security
-- **Deployment**: Vercel (frontend)
+- **Deployment**: Cloudflare Pages (frontend)
 
 ## Tech Stack
 
@@ -55,7 +55,7 @@ A modern, mobile-responsive web application for managing customer orders with re
 - Gmail API (OAuth2 for emails)
 
 ### Infrastructure
-- Vercel (frontend hosting)
+- Cloudflare Pages (frontend hosting)
 - AWS S3 (invoice storage)
 - Supabase (database + auth)
 
@@ -98,6 +98,7 @@ stellarglobalsupplies-orders/
 │   ├── features.md
 │   ├── engineering.md
 │   └── ui.md
+├── CLOUDFLARE_DEPLOY.md
 ├── VERCEL_DEPLOY.md
 └── README.md
 ```
@@ -148,9 +149,12 @@ npm start
 
 ## Deployment
 
-The frontend is deployed to **Vercel**. See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for detailed instructions.
+The frontend can be deployed to **Cloudflare Pages** or **Vercel**.
 
-Every `git push` to `main` triggers an automatic redeploy on Vercel.
+- **Cloudflare Pages** (recommended): See [CLOUDFLARE_DEPLOY.md](./CLOUDFLARE_DEPLOY.md) for detailed instructions.
+- **Vercel** (alternative): See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for detailed instructions.
+
+Every `git push` to `main` triggers an automatic redeploy.
 
 ## API Endpoints
 
