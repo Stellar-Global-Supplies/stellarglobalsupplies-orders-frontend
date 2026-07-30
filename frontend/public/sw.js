@@ -1,5 +1,5 @@
 // Stellar OMS — Service Worker for PWA offline support
-const CACHE = 'stellar-oms-v1';
+const CACHE = 'stellar-oms-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
