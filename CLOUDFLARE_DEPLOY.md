@@ -7,21 +7,24 @@
 
 ## What Was Added
 
-Two files:
+Three files:
 ```
-frontend/public/_redirects   ← SPA routing for Cloudflare Pages
-frontend/wrangler.toml       ← Cloudflare Pages build config
+frontend/public/_redirects         ← SPA routing for Cloudflare Pages
+frontend/wrangler.toml             ← Cloudflare Pages build config
+frontend/functions/api/[[path]].js ← API proxy function (eliminates CORS)
 ```
 
 The `_redirects` file is the Cloudflare Pages equivalent of Vercel's `rewrites`. It ensures all routes serve `index.html` with HTTP 200, so deep links and page refreshes don't return 404.
+
+The `functions/api/[[path]].js` file is a **Cloudflare Pages Function** that runs on the edge. It proxies all `/api/*` requests to the backend API Gateway, so the frontend never needs to make cross-origin requests. This eliminates CORS errors entirely.
 
 ---
 
 ## Step 1 — Push to GitHub
 
 ```bash
-git add frontend/public/_redirects frontend/wrangler.toml CLOUDFLARE_DEPLOY.md
-git commit -m "chore: add Cloudflare Pages deployment config"
+git add frontend/public/_redirects frontend/wrangler.toml frontend/functions/ CLOUDFLARE_DEPLOY.md
+git commit -m "chore: add Cloudflare Pages deployment config + API proxy function"
 git push origin main
 ```
 
@@ -54,16 +57,32 @@ No credit card required — Cloudflare Pages has a generous free tier.
 
 ## Step 4 — Add environment variables
 
-Expand **Environment variables** and add all 4:
+Cloudflare Pages requires two types of environment variables:
+
+### Build-time variables (baked into the React app)
+
+Expand **Environment variables (build)** and add:
 
 | Variable | Value |
 |---|---|
 | `REACT_APP_SUPABASE_URL` | `https://xxxx.supabase.co` |
 | `REACT_APP_SUPABASE_ANON_KEY` | your Supabase anon key |
-| `REACT_APP_API_BASE_URL` | your API Gateway URL |
+| `REACT_APP_API_BASE_URL` | `https://orders.stellarglobalsupplies.com/api` |
 | `REACT_APP_WHATSAPP_NUMBER` | e.g. `919637655556` |
 
-> ⚠️ Environment variables are baked in at build time. After changing them, you must trigger a new deployment for the changes to take effect.
+> `REACT_APP_API_BASE_URL` now points to the relative `/api` path on your custom domain. The Cloudflare Pages Function will proxy these requests to the actual API Gateway.
+
+### Server-side variables (used by the proxy function — NOT exposed to the browser)
+
+Expand **Environment variables (production)** and add:
+
+| Variable | Value |
+|---|---|
+| `API_BASE_URL` | `https://rjwx3tdkx3.execute-api.us-east-1.amazonaws.com` |
+
+> ⚠️ `API_BASE_URL` is the actual API Gateway URL. It is only accessible on the server side (in the Pages Function) and never sent to the browser. This is your real API Gateway URL — keep it secure.
+
+> ⚠️ Build-time env vars are baked in at build time. After changing them, you must trigger a new deployment for the changes to take effect.
 
 ---
 
@@ -144,13 +163,45 @@ This starts a local server that respects `_redirects` just like production.
 
 ---
 
+## API Proxy (CORS Solution)
+
+The `frontend/functions/api/[[path]].js` file is a **Cloudflare Pages Function** that runs on the edge network. It eliminates CORS entirely by proxying API requests through the same origin.
+
+### How it works
+
+1. The React app sends requests to `https://orders.stellarglobalsupplies.com/api/orders` (same origin)
+2. Cloudflare's edge catches the `/api/*` pattern and runs the Pages Function
+3. The function strips the `/api` prefix and forwards the request to the actual API Gateway URL (`API_BASE_URL` env var)
+4. The API Gateway response is returned to the browser as-is
+
+### Why this is better than CORS
+
+- No CORS preflight requests — faster, fewer network round trips
+- No need to configure CORS on the API Gateway
+- API Gateway URL stays hidden from the browser (better security)
+- Works with any API Gateway, even ones that don't support CORS
+
+### Environment variables for the proxy
+
+The proxy requires a **server-side** environment variable set in the Cloudflare Pages dashboard:
+
+| Variable | Where to set | Value |
+|---|---|---|
+| `API_BASE_URL` | Environment variables (Production) | `https://rjwx3tdkx3.execute-api.us-east-1.amazonaws.com` |
+
+This is different from the build-time `REACT_APP_API_BASE_URL` which the React app uses.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
 | Page refresh gives 404 | Confirm `frontend/public/_redirects` exists and contains `/* /index.html 200` |
 | Build fails | Check Root Directory is set to `frontend` in Cloudflare Pages settings |
-| API calls blocked (CORS) | Your API Gateway CORS must allow `orders.stellarglobalsupplies.com` (or `*.pages.dev` for preview) |
+| Proxy returns 500 | Verify `API_BASE_URL` is set in Cloudflare Pages **Environment variables (Production)** — not in build variables |
+| Proxy returns 404 | Check that the API Gateway path is correct. The proxy strips `/api` prefix, so `/api/orders` becomes `/orders` |
+| API calls still failing with CORS | The proxy eliminates CORS — ensure `REACT_APP_API_BASE_URL` is set to `https://orders.stellarglobalsupplies.com/api` (not the raw API Gateway URL) |
 | Env vars not working | Trigger a redeploy — they don't hot-reload |
 | `_redirects` not working | Ensure the file is in `frontend/public/` so CRA copies it to `build/` |
 
