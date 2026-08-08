@@ -24,7 +24,7 @@ import {
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
@@ -59,7 +59,7 @@ export function initTracing() {
     console.warn('[tracing] REACT_APP_NR_LICENSE_KEY not set — spans will not export to New Relic.');
   }
 
-  const resource = new Resource({
+  const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]:      SERVICE_NAME,
     'deployment.environment': NODE_ENV,
     'browser.user_agent':     navigator.userAgent,
