@@ -121,6 +121,7 @@ export async function fetchOrderByTrackingToken(token) {
   const res = await fetch(`${API_BASE}/track/${token}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: 'Order not found' }));

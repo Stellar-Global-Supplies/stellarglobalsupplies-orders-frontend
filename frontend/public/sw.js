@@ -1,5 +1,5 @@
 // Stellar OMS — Service Worker for PWA offline support
-const CACHE = 'stellar-oms-v2';
+const CACHE = 'stellar-oms-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -25,9 +25,20 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // Only cache static assets from our origin
-  if (e.request.method !== 'GET') {
-    return; // Don't interfere with API calls
+  // Never cache API calls
+  if (e.request.method !== 'GET') return;
+
+  // Never cache order tracking pages — must always reflect live status
+  if (url.pathname.startsWith('/track/')) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-store' }).catch(() =>
+        new Response(JSON.stringify({ message: 'You are offline' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    );
+    return;
   }
 
   // For navigation requests (HTML pages), always go to network
@@ -44,7 +55,6 @@ self.addEventListener('fetch', (e) => {
       caches.match(e.request).then((cached) => {
         if (cached) return cached;
         return fetch(e.request).then((response) => {
-          // Cache successful responses for static assets
           if (response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE).then((cache) => cache.put(e.request, clone));
@@ -56,6 +66,6 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // For external resources (API calls, etc.), just fetch
+  // For external resources (API calls etc.), just fetch
   e.respondWith(fetch(e.request));
 });
