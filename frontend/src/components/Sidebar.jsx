@@ -33,9 +33,12 @@ export default function Sidebar({ open, onClose }) {
   
 
   const handleSignOut = async () => {
-    await signOut();
-    // signOut() now redirects to portal — no navigate needed
-    toast.success('Signed out');
+    try {
+      await signOut();
+      // signOut() redirects to portal on success — toast never reached
+    } catch (err) {
+      toast.error(err?.message || 'Sign-out failed. Please try again.');
+    }
   };
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'SG';
