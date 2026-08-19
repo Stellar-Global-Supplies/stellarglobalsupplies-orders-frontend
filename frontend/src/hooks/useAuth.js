@@ -21,7 +21,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    let error;
+    try {
+      ({ error } = await supabase.auth.signOut());
+    } catch (err) {
+      throw new Error(err?.message || 'Sign-out failed');
+    }
+    if (error) throw new Error(error.message || 'Sign-out failed');
     window.location.replace(LANDING_URL);
   };
 
