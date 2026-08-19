@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
 
-const EXCHANGE_FN = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/sso-exchange`;
-const LANDING_URL = process.env.REACT_APP_LANDING_URL || 'https://apps.stellarglobalsupplies.com';
-const MAX_AGE_MS  = 5 * 60 * 1000;
+const EXCHANGE_FN   = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/sso-exchange`;
+const LANDING_URL   = process.env.REACT_APP_LANDING_URL || 'https://apps.stellarglobalsupplies.com';
+const MAX_AGE_MS    = 5 * 60 * 1000;
+const CLOCK_SKEW_MS = 30 * 1000;
 
 // ── Open-redirect guard ───────────────────────────────────────
 function safeRedirect(redirect, fallback = '/') {
@@ -26,14 +27,30 @@ export default function SSOCallback() {
     const ts       = Number(params.get('ts') || 0);
     const redirect = safeRedirect(params.get('redirect') || '/');
 
-    if (ts && Date.now() - ts > MAX_AGE_MS) {
+    // No token → direct visit; redirect to portal login before any ts checks
+    if (!token) {
+      const callback = encodeURIComponent(window.location.origin + redirect);
+      window.location.replace(`${LANDING_URL}/login?callback=${callback}`);
+      return;
+    }
+
+    // Validate ts is a finite number
+    if (!Number.isFinite(ts) || ts === 0) {
+      setError('Invalid sign-in link. Please return to the portal.');
+      return;
+    }
+
+    const now = Date.now();
+
+    // Reject expired tokens
+    if (now - ts > MAX_AGE_MS) {
       setError('This sign-in link has expired. Please return to the portal.');
       return;
     }
 
-    if (!token) {
-      const callback = encodeURIComponent(window.location.origin + redirect);
-      window.location.replace(`${LANDING_URL}/login?callback=${callback}`);
+    // Reject tokens issued too far in the future (clock skew guard)
+    if (ts - now > CLOCK_SKEW_MS) {
+      setError('This sign-in link is not yet valid. Please check your system clock.');
       return;
     }
 
