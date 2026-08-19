@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { SgsLogo } from '../pages/LoginPage';
+import SgsLogo from './SgsLogo';
 import toast from 'react-hot-toast';
 
 const NAV = [
@@ -30,12 +30,15 @@ const NAV = [
 export default function Sidebar({ open, onClose }) {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
+  
 
   const handleSignOut = async () => {
-    await signOut();
-    toast.success('Signed out');
-    navigate('/login');
+    try {
+      await signOut();
+      // signOut() redirects to portal on success — toast never reached
+    } catch (err) {
+      toast.error(err?.message || 'Sign-out failed. Please try again.');
+    }
   };
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'SG';
