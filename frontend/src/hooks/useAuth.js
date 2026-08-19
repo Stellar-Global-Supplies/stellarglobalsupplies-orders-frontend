@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
 
+const LANDING_URL = process.env.REACT_APP_LANDING_URL || 'https://apps.stellarglobalsupplies.com';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -12,25 +13,20 @@ export function AuthProvider({ children }) {
       setUser(session?.user ?? null);
       setLoading(false);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    window.location.replace(LANDING_URL);
   };
 
-  const signOut = () => supabase.auth.signOut();
-
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
