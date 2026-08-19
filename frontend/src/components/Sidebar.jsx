@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { SgsLogo } from '../pages/LoginPage';
+import SgsLogo from './SgsLogo';
 import toast from 'react-hot-toast';
 
 const NAV = [
