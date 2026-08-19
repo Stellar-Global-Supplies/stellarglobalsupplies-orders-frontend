@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../utils/supabase';
 
 const EXCHANGE_FN   = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/sso-exchange`;
@@ -18,14 +18,23 @@ function safeRedirect(redirect, fallback = '/') {
 }
 
 export default function SSOCallback() {
-  const [status, setStatus] = useState('Verifying your session…');
-  const [error,  setError]  = useState(null);
+  const [status,  setStatus] = useState('Verifying your session…');
+  const [error,   setError]  = useState(null);
+  const exchanged = useRef(false);
 
   useEffect(() => {
+    // StrictMode guard — prevent double-submission of the same token
+    if (exchanged.current) return;
+    exchanged.current = true;
+
     const params   = new URLSearchParams(window.location.search);
     const token    = params.get('token');
     const ts       = Number(params.get('ts') || 0);
     const redirect = safeRedirect(params.get('redirect') || '/');
+
+    // Strip query string immediately — before any async work — so the token
+    // is not visible in history or re-readable on back-navigation
+    history.replaceState(null, '', window.location.pathname);
 
     // No token → direct visit; redirect to portal login before any ts checks
     if (!token) {
