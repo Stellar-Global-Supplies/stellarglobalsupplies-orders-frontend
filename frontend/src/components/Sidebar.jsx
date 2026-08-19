@@ -30,12 +30,12 @@ const NAV = [
 export default function Sidebar({ open, onClose }) {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
+  
 
   const handleSignOut = async () => {
     await signOut();
+    // signOut() now redirects to portal — no navigate needed
     toast.success('Signed out');
-    navigate('/login');
   };
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'SG';
