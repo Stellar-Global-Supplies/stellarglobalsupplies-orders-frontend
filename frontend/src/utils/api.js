@@ -194,6 +194,21 @@ export async function updateOrderItem(orderId, itemId, updates) {
   return res.json();
 }
 
+// Edit order header fields (customer name, phone, email, delivery date, payment status)
+export async function updateOrderDetails(orderId, payload) {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Request failed' }));
+    throw new Error(err.message || 'Failed to update order details');
+  }
+  return res.json();
+}
+
 // Delete product from order
 export async function deleteOrderItem(orderId, itemId) {
   const headers = await authHeaders();
