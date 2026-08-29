@@ -15,6 +15,7 @@ import {
   addOrderItem,
   updateOrderItem,
   deleteOrderItem,
+  updateOrderDetails,
 } from '../utils/api';
 import { StatusBadge, PaymentBadge } from '../components/StatusBadge';
 import OrderTimeline, { STATUS_ORDER } from '../components/OrderTimeline';
@@ -138,6 +139,9 @@ export default function OrderDetailPage() {
   const [materials, setMaterials] = useState([]);
   const [skuLoading, setSkuLoading] = useState(true);
   const [matLoading, setMatLoading] = useState(true);
+  const [editingOrderDetails, setEditingOrderDetails] = useState(false);
+  const [editedOrderDetails, setEditedOrderDetails] = useState({});
+  const [savingOrderDetails, setSavingOrderDetails] = useState(false);
 
   const loadOrder = async () => {
     setLoading(true);
@@ -237,6 +241,51 @@ export default function OrderDetailPage() {
     } finally {
       setSendingEmail(false);
       setInvoiceFile(null);
+    }
+  };
+
+  // ── Order Details Editing Functions ────────────────────────────────
+  const startEditingOrderDetails = () => {
+    setEditedOrderDetails({
+      customer_name:     order.customer_name,
+      phone:             order.phone,
+      email:             order.email,
+      delivery_timeline: order.delivery_timeline
+        ? order.delivery_timeline.split('T')[0]
+        : '',
+      payment_status: order.payment_status,
+    });
+    setEditingOrderDetails(true);
+  };
+
+  const cancelEditingOrderDetails = () => {
+    setEditedOrderDetails({});
+    setEditingOrderDetails(false);
+  };
+
+  const saveOrderDetails = async () => {
+    const { customer_name, phone, email, delivery_timeline, payment_status } = editedOrderDetails;
+    if (!customer_name?.trim()) { toast.error('Customer name is required'); return; }
+    if (!phone?.trim())         { toast.error('Phone is required'); return; }
+    if (!email?.trim() || !email.includes('@')) { toast.error('Valid email is required'); return; }
+    if (!delivery_timeline)     { toast.error('Delivery date is required'); return; }
+
+    setSavingOrderDetails(true);
+    try {
+      await updateOrderDetails(order.id, {
+        customer_name:     customer_name.trim(),
+        phone:             phone.trim(),
+        email:             email.trim().toLowerCase(),
+        delivery_timeline,
+        payment_status,
+      });
+      toast.success('Order details updated');
+      setEditingOrderDetails(false);
+      await loadOrder();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update order details');
+    } finally {
+      setSavingOrderDetails(false);
     }
   };
 
@@ -623,6 +672,21 @@ export default function OrderDetailPage() {
             </button>
           )}
 
+          {/* Edit Order Details — Ready to Dispatch only */}
+          {order.status === 'Ready to Dispatch' && !editingOrderDetails && (
+            <button
+              className="btn btn-secondary"
+              onClick={startEditingOrderDetails}
+              disabled={updatingStatus}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+              </svg>
+              Edit Order Details
+            </button>
+          )}
+
           {order.status === 'Delivered' && (
             <span className="btn" style={{ background: 'var(--brand-teal-light)', color: 'var(--brand-teal)', cursor: 'default' }}>
               ✅ Complete
@@ -643,11 +707,48 @@ export default function OrderDetailPage() {
         <div className="order-detail-grid">
           {/* Customer Info */}
           <div className="card">
-            <div className="card-header"><span className="card-title">Customer Details</span></div>
+            <div className="card-header">
+              <span className="card-title">Customer Details</span>
+            </div>
             <div className="card-body">
-              <DetailRow label="Name"  value={order.customer_name} />
-              <DetailRow label="Phone" value={order.phone} />
-              <DetailRow label="Email" value={order.email} />
+              {!editingOrderDetails ? (
+                <>
+                  <DetailRow label="Name"  value={order.customer_name} />
+                  <DetailRow label="Phone" value={order.phone} />
+                  <DetailRow label="Email" value={order.email} />
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Customer Name *</label>
+                    <input
+                      className="form-control"
+                      value={editedOrderDetails.customer_name || ''}
+                      onChange={(e) => setEditedOrderDetails(p => ({ ...p, customer_name: e.target.value }))}
+                      placeholder="Customer name"
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Phone *</label>
+                    <input
+                      className="form-control"
+                      value={editedOrderDetails.phone || ''}
+                      onChange={(e) => setEditedOrderDetails(p => ({ ...p, phone: e.target.value }))}
+                      placeholder="Phone number"
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Email *</label>
+                    <input
+                      className="form-control"
+                      type="email"
+                      value={editedOrderDetails.email || ''}
+                      onChange={(e) => setEditedOrderDetails(p => ({ ...p, email: e.target.value }))}
+                      placeholder="Email address"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -655,14 +756,60 @@ export default function OrderDetailPage() {
           <div className="card">
             <div className="card-header"><span className="card-title">Order Details</span></div>
             <div className="card-body">
-              <DetailRow label="Payment"           value={<PaymentBadge status={order.payment_status} />} />
-              <DetailRow
-                label="Delivery Timeline"
-                value={order.delivery_timeline
-                  ? format(new Date(order.delivery_timeline), 'dd MMM yyyy')
-                  : '—'}
-              />
-              <DetailRow label="Current Status" value={<StatusBadge status={order.status} />} />
+              {!editingOrderDetails ? (
+                <>
+                  <DetailRow label="Payment"           value={<PaymentBadge status={order.payment_status} />} />
+                  <DetailRow
+                    label="Delivery Timeline"
+                    value={order.delivery_timeline
+                      ? format(new Date(order.delivery_timeline), 'dd MMM yyyy')
+                      : '—'}
+                  />
+                  <DetailRow label="Current Status" value={<StatusBadge status={order.status} />} />
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Payment Status</label>
+                    <select
+                      className="form-control"
+                      value={editedOrderDetails.payment_status || ''}
+                      onChange={(e) => setEditedOrderDetails(p => ({ ...p, payment_status: e.target.value }))}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Partial">Partial</option>
+                      <option value="Paid">Paid</option>
+                      <option value="After 30 days">After 30 days</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Delivery Date *</label>
+                    <DatePicker
+                      selected={editedOrderDetails.delivery_timeline ? new Date(editedOrderDetails.delivery_timeline) : null}
+                      onChange={(date) => setEditedOrderDetails(p => ({
+                        ...p,
+                        delivery_timeline: date ? date.toISOString().split('T')[0] : '',
+                      }))}
+                      dateFormat="dd MMM yyyy"
+                      placeholderText="Select delivery date"
+                      className="form-control"
+                      popperPlacement="bottom-start"
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                    />
+                  </div>
+                  <DetailRow label="Current Status" value={<StatusBadge status={order.status} />} />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                    <button className="btn btn-secondary" onClick={cancelEditingOrderDetails} disabled={savingOrderDetails}>
+                      Cancel
+                    </button>
+                    <button className="btn btn-primary" onClick={saveOrderDetails} disabled={savingOrderDetails}>
+                      {savingOrderDetails ? <><span className="spinner" /> Saving…</> : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Products table - show if there are multiple products */}
               {!editingProducts && orderItems.length > 0 && <ProductsTable products={orderItems} />}
