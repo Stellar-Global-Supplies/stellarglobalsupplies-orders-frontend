@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import toast from 'react-hot-toast';
-import { fetchProductTypes, fetchMaterials } from '../utils/supabase';
+import { fetchProductTypes, fetchMaterials, fetchCustomers } from '../utils/supabase';
 import { createOrder } from '../utils/api';
 
 const UNITS           = ['Pieces', 'Kgs'];
@@ -56,6 +56,13 @@ export default function NewOrderPage() {
   const [products,  setProducts]  = useState([EMPTY_PRODUCT]); // Array of products
   const [errors,    setErrors]    = useState({});
 
+  // Existing-customer lookup
+  const [customers,        setCustomers]        = useState([]);
+  const [customerMatches,  setCustomerMatches]  = useState([]);
+  const [showCustomerList, setShowCustomerList] = useState(false);
+  const [autoFilled,       setAutoFilled]       = useState(false);
+  const customerFieldRef = useRef(null);
+
   useEffect(() => {
     // top_sku view → skus column
     fetchProductTypes()
@@ -68,10 +75,64 @@ export default function NewOrderPage() {
       .then(setMaterials)
       .catch(() => toast.error('Failed to load materials'))
       .finally(() => setMatLoading(false));
+
+    // distinct customers from past orders → name/phone/email lookup
+    fetchCustomers()
+      .then(setCustomers)
+      .catch(() => {}); // non-critical — silently allow manual entry if this fails
+  }, []);
+
+  // Close the customer suggestions dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (customerFieldRef.current && !customerFieldRef.current.contains(e.target)) {
+        setShowCustomerList(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const set = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e?.target ? e.target.value : e }));
+
+  // Customer name typing — filters suggestions, still allows free typing for new customers
+  const handleCustomerNameChange = (e) => {
+    const value = e.target.value;
+    setForm((f) => ({ ...f, customer_name: value }));
+    setAutoFilled(false);
+    clearError('customer_name');
+
+    if (value.trim().length > 0) {
+      const q = value.trim().toLowerCase();
+      setCustomerMatches(
+        customers.filter((c) => c.customer_name.toLowerCase().includes(q)).slice(0, 8)
+      );
+      setShowCustomerList(true);
+    } else {
+      setCustomerMatches([]);
+      setShowCustomerList(false);
+    }
+  };
+
+  // Selecting an existing customer from the dropdown — auto-fills phone & email
+  const selectCustomer = (customer) => {
+    setForm((f) => ({
+      ...f,
+      customer_name: customer.customer_name,
+      phone: customer.phone || f.phone,
+      email: customer.email || f.email,
+    }));
+    setErrors((prev) => {
+      const n = { ...prev };
+      delete n.customer_name;
+      if (customer.phone) delete n.phone;
+      if (customer.email) delete n.email;
+      return n;
+    });
+    setAutoFilled(true);
+    setShowCustomerList(false);
+  };
 
   const setProduct = (index, key) => (e) => {
     const value = e?.target ? e.target.value : e;
@@ -215,12 +276,58 @@ export default function NewOrderPage() {
             <div className="card-body">
                     <div className="form-grid-3">
                 <Field label="Customer Name" required error={errors.customer_name}>
-                  <input
-                    className={`form-control${errors.customer_name ? ' error' : ''}`}
-                    placeholder="e.g. Rahul Sharma"
-                    value={form.customer_name}
-                    onChange={(e) => { set('customer_name')(e); clearError('customer_name'); }}
-                  />
+                  <div ref={customerFieldRef} style={{ position: 'relative' }}>
+                    <input
+                      className={`form-control${errors.customer_name ? ' error' : ''}`}
+                      placeholder="e.g. Rahul Sharma"
+                      value={form.customer_name}
+                      onChange={handleCustomerNameChange}
+                      onFocus={() => { if (customerMatches.length) setShowCustomerList(true); }}
+                      autoComplete="off"
+                    />
+                    {showCustomerList && customerMatches.length > 0 && (
+                      <ul
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 20,
+                          margin: '4px 0 0',
+                          padding: 4,
+                          listStyle: 'none',
+                          background: 'var(--card-bg, #fff)',
+                          border: '1px solid var(--border-color, #ddd)',
+                          borderRadius: 8,
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                          maxHeight: 220,
+                          overflowY: 'auto',
+                        }}
+                      >
+                        {customerMatches.map((c) => (
+                          <li
+                            key={c.customer_name}
+                            onClick={() => selectCustomer(c)}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                            }}
+                            onMouseDown={(e) => e.preventDefault()} // keep focus, avoid blur race
+                            className="customer-suggestion-item"
+                          >
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{c.customer_name}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary, #777)' }}>
+                              {[c.phone, c.email].filter(Boolean).join(' · ')}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary, #999)', marginTop: 4, display: 'block' }}>
+                    Start typing to pick an existing customer, or enter a new one.
+                  </span>
                 </Field>
 
                 <Field label="Phone Number" required error={errors.phone}>
@@ -228,8 +335,9 @@ export default function NewOrderPage() {
                     className={`form-control${errors.phone ? ' error' : ''}`}
                     placeholder="e.g. 9876543210"
                     value={form.phone}
-                    onChange={(e) => { set('phone')(e); clearError('phone'); }}
+                    onChange={(e) => { set('phone')(e); clearError('phone'); setAutoFilled(false); }}
                     type="tel"
+                    style={autoFilled ? { background: 'var(--brand-teal-10, #e6f7f5)' } : undefined}
                   />
                 </Field>
 
@@ -238,8 +346,9 @@ export default function NewOrderPage() {
                     className={`form-control${errors.email ? ' error' : ''}`}
                     placeholder="customer@example.com"
                     value={form.email}
-                    onChange={(e) => { set('email')(e); clearError('email'); }}
+                    onChange={(e) => { set('email')(e); clearError('email'); setAutoFilled(false); }}
                     type="email"
+                    style={autoFilled ? { background: 'var(--brand-teal-10, #e6f7f5)' } : undefined}
                   />
                 </Field>
               </div>
