@@ -43,3 +43,27 @@ export const fetchMaterials = async () => {
   if (error) throw error;
   return data?.map((r) => r.material_type).filter(Boolean) ?? [];
 };
+
+// Fetch distinct customers (name, phone, email) from orders — used to
+// power the "existing customer" lookup on New Order. We pull the most
+// recent orders and dedupe by customer_name client-side, keeping the
+// latest contact details for each name.
+export const fetchCustomers = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('customer_name, phone, email, created_at')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const seen = new Map();
+  for (const row of data ?? []) {
+    const name = row.customer_name?.trim();
+    if (!name || seen.has(name)) continue;
+    seen.set(name, {
+      customer_name: name,
+      phone: row.phone ?? '',
+      email: row.email ?? '',
+    });
+  }
+  return Array.from(seen.values());
+};
