@@ -535,6 +535,27 @@ export default function TrackOrderPage() {
         <div style={{ textAlign: 'center', padding: '24px 0 8px', fontSize: 12, color: '#CBD5E1', lineHeight: 2 }}>
           © {new Date().getFullYear()} Stellar Global Supplies<br />
           India's Most Reliable Industrial Supply Partner
+
+          <div style={{ marginTop: 10, color: '#94A3B8' }}>
+            Crafted by{' '}
+            <a
+              href="https://stellarforge.stellarglobalsupplies.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#7DD3FC', fontWeight: 600, textDecoration: 'none' }}
+            >
+              Stellar Forge
+            </a>
+            {' '}— have a project in mind?{' '}
+            <a
+              href="https://stellarforge.stellarglobalsupplies.com/contact/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#7DD3FC', textDecoration: 'underline' }}
+            >
+              Send us your enquiry →
+            </a>
+          </div>
         </div>
       </div>
     </div>
