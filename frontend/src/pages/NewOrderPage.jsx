@@ -5,6 +5,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import toast from 'react-hot-toast';
 import { fetchProductTypes, fetchMaterials, fetchCustomers } from '../utils/supabase';
 import { createOrder } from '../utils/api';
+import { PREFILL_KEY } from '../utils/aiWidget';
 
 const UNITS           = ['Pieces', 'Kgs'];
 const PAYMENT_OPTIONS = ['Pending', 'Paid', 'Partial', 'After 30 days'];
@@ -91,6 +92,27 @@ export default function NewOrderPage() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Pick up data staged by the AI widget after it extracts a purchase order.
+  // Runs once on mount, clears the staged key immediately, and never submits
+  // anything automatically — the user still has to review and click Create Order.
+  useEffect(() => {
+    const raw = sessionStorage.getItem(PREFILL_KEY);
+    if (!raw) return;
+    sessionStorage.removeItem(PREFILL_KEY);
+    try {
+      const { form: prefillForm, products: prefillProducts } = JSON.parse(raw);
+      if (prefillForm) {
+        setForm((f) => ({ ...f, ...prefillForm }));
+      }
+      if (prefillProducts?.length) {
+        setProducts(prefillProducts.map((p) => ({ ...EMPTY_PRODUCT, ...p })));
+      }
+      toast.success('Fields pre-filled from the uploaded document — please review before submitting.');
+    } catch {
+      toast.error('Could not read the extracted order data.');
+    }
   }, []);
 
   const set = (key) => (e) =>
