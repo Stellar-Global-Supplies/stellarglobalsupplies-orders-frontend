@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
 import Sidebar         from './components/Sidebar';
+import AiWidget        from './components/AiWidget/AiWidget';
 import SSOCallback     from './components/SSOCallback';
 import LoginPage       from './pages/LoginPage';
 import DashboardPage   from './pages/DashboardPage';
@@ -98,6 +99,8 @@ function AppLayout() {
       <main className="main-content">
         <Outlet />
       </main>
+
+      <AiWidget />
     </div>
   );
 }
